@@ -97,7 +97,8 @@ one is refused). Everything else is optional:
 |---|---|
 | `company` | Their organization's name |
 | `plan` | Free-text plan name |
-| `amount` | **Major units.** If your billing provider deals in cents, divide by 100 here — reporting `9900` where `99` was meant shows a pipeline worth a hundred times the real revenue, and looks plausible until somebody totals it |
+| `amount_minor` | **Pass your billing provider's raw figure** — Stripe's `amount_paid`, 9900 for $99. Converted for you. Doing the `/ 100` yourself is the one arithmetic slip that shows a pipeline worth a hundred times the real revenue, and looks plausible until somebody totals it. Zero reports the conversion with no value, because a zero-value deal is noise in every chart |
+| `amount` | Major units, if you would rather convert yourself |
 | `currency` | ISO 4217, e.g. `USD` |
 | `external_id` | Your id for the thing; also acts as an idempotency key |
 | `source` | Free-text, e.g. `myapp_backend` |

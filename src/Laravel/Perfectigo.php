@@ -63,6 +63,22 @@ class Perfectigo
             ]);
         }
 
+        // Billing providers deal in MINOR units — Stripe, Paddle and Braintree
+        // all send 9900 for $99. Converting at the call site is one `/ 100`
+        // somebody eventually forgets, and the result is a pipeline reporting a
+        // hundred times the real revenue: plausible right up until it is totted
+        // up. Pass the raw figure as amount_minor and it cannot go wrong.
+        //
+        // Zero stays null rather than becoming 0: a trial converting on a
+        // full-discount coupon is a real conversion, but a zero-value deal is
+        // noise in every revenue chart.
+        if (array_key_exists('amount_minor', $data)) {
+            $minor = $data['amount_minor'];
+            unset($data['amount_minor']);
+
+            $data['amount'] = is_numeric($minor) && (int) $minor > 0 ? ((int) $minor) / 100 : null;
+        }
+
         dispatch(new SendPerfectigoEvent(
             $type,
             array_filter(['email' => $email] + $data, static fn ($v) => $v !== null && $v !== ''),

@@ -196,6 +196,46 @@ class PerfectigoTest extends TestCase
         });
     }
 
+    public function test_amount_minor_is_converted_to_major_units(): void
+    {
+        Queue::fake();
+
+        // Stripe sends 9900 for $99. Every consumer would otherwise write
+        // `/ 100` at the call site, and one of them would forget.
+        Perfectigo::event('order', 'a@b.test', ['amount_minor' => 9900]);
+
+        Queue::assertPushed(SendPerfectigoEvent::class, function (SendPerfectigoEvent $job) {
+            return (float) $job->payload['amount'] === 99.0
+                && ! array_key_exists('amount_minor', $job->payload);
+        });
+    }
+
+    public function test_an_odd_amount_keeps_its_fraction(): void
+    {
+        Queue::fake();
+
+        Perfectigo::event('order', 'a@b.test', ['amount_minor' => 9950]);
+
+        Queue::assertPushed(
+            SendPerfectigoEvent::class,
+            fn (SendPerfectigoEvent $job) => (float) $job->payload['amount'] === 99.5,
+        );
+    }
+
+    public function test_a_zero_amount_reports_the_conversion_without_a_value(): void
+    {
+        Queue::fake();
+
+        Perfectigo::event('order', 'a@b.test', ['amount_minor' => 0, 'external_id' => 'in_1']);
+
+        Queue::assertPushed(SendPerfectigoEvent::class, function (SendPerfectigoEvent $job) {
+            // A trial converting on a full-discount coupon is a real conversion,
+            // but a zero-value deal is noise in every revenue chart.
+            return ! array_key_exists('amount', $job->payload)
+                && $job->payload['external_id'] === 'in_1';
+        });
+    }
+
     // -----------------------------------------------------------------
     // Retry or stop
     // -----------------------------------------------------------------
