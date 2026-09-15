@@ -8,6 +8,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Orchestra\Testbench\TestCase;
 use Perfectigo\Client;
@@ -150,6 +151,35 @@ class PerfectigoTest extends TestCase
             // knows with nothing.
             return $job->payload === ['email' => 'a@b.test', 'source' => 'app'];
         });
+    }
+
+    public function test_a_ticked_consent_with_no_wording_is_warned_about(): void
+    {
+        Queue::fake();
+        Log::spy();
+
+        Perfectigo::event('signup', 'a@b.test', ['consent' => true]);
+
+        // The event still goes — dropping a real opt-in would be worse. But a
+        // consent record with no wording proves nothing, and there is no other
+        // way for the developer to find out they built one.
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn ($message) => str_contains($message, 'no wording'));
+
+        Queue::assertPushed(SendPerfectigoEvent::class);
+    }
+
+    public function test_a_ticked_consent_with_wording_is_silent(): void
+    {
+        Queue::fake();
+        Log::spy();
+
+        Perfectigo::event('signup', 'a@b.test', [
+            'consent' => true,
+            'consent_text' => 'I agree to receive marketing emails.',
+        ]);
+
+        Log::shouldNotHaveReceived('warning');
     }
 
     public function test_a_false_consent_survives_the_payload_filter(): void

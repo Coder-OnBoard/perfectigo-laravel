@@ -2,6 +2,8 @@
 
 namespace Perfectigo\Laravel;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * The whole API:
  *
@@ -44,6 +46,21 @@ class Perfectigo
         // job that can only 422 is queue noise.
         if ($email === '' || ! self::configured()) {
             return;
+        }
+
+        // A consent record is only worth anything as evidence of what the
+        // person READ. Ticked box, no wording, and the receiving end falls back
+        // to a generic sentence nobody was ever shown — a record that looks
+        // compliant and proves nothing.
+        //
+        // Warned rather than refused: dropping the event would lose a real
+        // opt-in, which is worse. But it is the one thing in this package that
+        // is worth a log line, because there is no other way to find out.
+        if (($data['consent'] ?? null) === true && trim((string) ($data['consent_text'] ?? '')) === '') {
+            Log::warning('[perfectigo] consent reported with no wording', [
+                'event' => $type,
+                'hint' => "Pass consent_text — the exact sentence beside your checkbox. config('perfectigo.consent_text') is the usual home for it.",
+            ]);
         }
 
         dispatch(new SendPerfectigoEvent(
