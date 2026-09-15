@@ -38,4 +38,21 @@ return [
     | letting the job retry.
     */
     'timeout' => (int) env('PERFECTIGO_TIMEOUT', 15),
+
+    /*
+    | The exact wording printed beside your marketing opt-in checkbox.
+    |
+    | Send it with the event that records consent:
+    |
+    |     $user->reportToPerfectigo('signup', [
+    |         'consent'      => $ticked,
+    |         'consent_text' => config('perfectigo.consent_text'),
+    |     ]);
+    |
+    | It lives in config rather than at the call site because a consent record
+    | is evidence of what the person READ. A paraphrase typed from memory makes
+    | it evidence of something nobody agreed to — so there is one copy, and it
+    | changes in lockstep with the form.
+    */
+    'consent_text' => env('PERFECTIGO_CONSENT_TEXT'),
 ];
